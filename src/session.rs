@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
 
     // TODO: Start session with an initial user message
     // Add your initial user message here
-    let session = vec![
+    let mut session = vec![
         ChatCompletionRequestUserMessageArgs::default()
             .content("Hello! I'm learning Rust and would like to ask you some questions about the language.")
             .build()?
