@@ -3,7 +3,9 @@ use async_openai::{
     Client,
     config::OpenAIConfig,
     types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestAssistantMessageContent,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageContent,
+        ChatCompletionRequestUserMessageArgs, ChatCompletionRequestUserMessageContent,
         CreateChatCompletionRequestArgs,
     },
 };
@@ -69,6 +71,52 @@ async fn main() -> Result<()> {
     // Send first query and print answer
     let answer = send_query(&client, &session).await?;
     println!("Assistant: {}", answer);
+
+    // Append the assistant's response to session history
+    session.push(
+        ChatCompletionRequestAssistantMessageArgs::default()
+            .content(answer)
+            .build()?
+            .into(),
+    );
+
+    // Append a follow-up question to session history
+    session.push(
+        ChatCompletionRequestUserMessageArgs::default()
+            .content("Can you tell me another fun fact about the same topic?")
+            .build()?
+            .into(),
+    );
+
+    // Call send_query with the updated session history and print the response
+    let follow_up_answer = send_query(&client, &session).await?;
+    println!("Assistant (follow-up): {}", follow_up_answer);
+
+    println!("\nConversation History:");
+    for message in &session {
+        match message {
+            ChatCompletionRequestMessage::User(user_msg) => {
+                if let ChatCompletionRequestUserMessageContent::Text(content) = &user_msg.content {
+                    println!(">>User: {}", content);
+                }
+            }
+            ChatCompletionRequestMessage::Assistant(assistant_msg) => {
+                if let Some(ChatCompletionRequestAssistantMessageContent::Text(content)) =
+                    &assistant_msg.content
+                {
+                    println!(">>Assistant: {}", content);
+                }
+            }
+            ChatCompletionRequestMessage::System(system_msg) => {
+                if let ChatCompletionRequestSystemMessageContent::Text(content) =
+                    &system_msg.content
+                {
+                    println!(">>System: {}", content);
+                }
+            }
+            _ => println!("Unknown message type"),
+        }
+    }
 
     Ok(())
 }
