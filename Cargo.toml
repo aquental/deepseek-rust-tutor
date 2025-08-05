@@ -9,3 +9,11 @@ async-openai = "0.29.0"
 dotenv = "0.15"
 tokio = { version = "1.47.1", features = ["full"] }
 
+
+[[bin]]
+name = "deepseek-rust-tutor"
+path = "src/main.rs"
+
+[[bin]]
+name = "session"
+path = "src/session.rs"
