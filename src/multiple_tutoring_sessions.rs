@@ -1,34 +1,78 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_openai::{
     Client,
     config::OpenAIConfig,
-    types::{ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs},
+    types::{
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+        CreateChatCompletionRequestArgs,
+    },
 };
 use dotenv::dotenv;
 use std::{collections::HashMap, env};
 use tokio;
 use uuid::Uuid;
 
-// Create a new function to generate a unique chat session
-fn create_new_session(
+// Create a new tutoring session and seed it with the system prompt
+fn create_session(
     sessions: &mut HashMap<Uuid, Vec<ChatCompletionRequestMessage>>,
     system_prompt: &str,
 ) -> Result<Uuid> {
-    // Generate unique session identifier
     let session_id = Uuid::new_v4();
-
-    // Create system prompt message
-    let system_message = ChatCompletionRequestSystemMessageArgs::default()
+    let system_msg = ChatCompletionRequestSystemMessageArgs::default()
         .content(system_prompt)
+        .build()?
+        .into();
+    sessions.insert(session_id, vec![system_msg]);
+    Ok(session_id)
+}
+
+// Send a user query in the given session, update history, and return the assistant’s reply
+async fn send_query(
+    client: &Client<OpenAIConfig>,
+    sessions: &mut HashMap<Uuid, Vec<ChatCompletionRequestMessage>>,
+    session_id: Uuid,
+    user_message: &str,
+) -> Result<String> {
+    let history = sessions
+        .get_mut(&session_id)
+        .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+
+    // Append the new user message
+    history.push(
+        ChatCompletionRequestUserMessageArgs::default()
+            .content(user_message)
+            .build()?
+            .into(),
+    );
+
+    // Create a chat completion request with the updated session history
+    let request = CreateChatCompletionRequestArgs::default()
+        .model("gpt-4.1-nano")
+        .messages(history.clone())
         .build()?;
 
-    // Initialize empty conversation history with system prompt
-    let conversation_history = vec![ChatCompletionRequestMessage::System(system_message)];
+    // Send the request
+    let response = client.chat().create(request).await?;
 
-    // Insert into sessions HashMap
-    sessions.insert(session_id, conversation_history);
+    // Extract the assistant’s reply
+    let reply = response
+        .choices
+        .first()
+        .and_then(|c| c.message.content.as_deref())
+        .unwrap_or_default()
+        .trim()
+        .to_string();
 
-    Ok(session_id)
+    // Append the assistant’s reply to the session history
+    history.push(
+        ChatCompletionRequestAssistantMessageArgs::default()
+            .content(reply.as_str())
+            .build()?
+            .into(),
+    );
+
+    Ok(reply)
 }
 
 #[tokio::main]
@@ -48,39 +92,74 @@ async fn main() -> Result<()> {
     let mut sessions: HashMap<Uuid, Vec<ChatCompletionRequestMessage>> = HashMap::new();
 
     // System prompt for all sessions
-    let system_prompt = "You are a friendly and efficient customer service attendant eager to assist customers with their inquiries and concerns.";
+    let system_prompt = "You are an experienced and patient tutor specialized in math and science, providing clear and concise explanations.";
 
-    // Create new session and print results
-    let session_id = create_new_session(&mut sessions, system_prompt)?;
-    println!("New session created with ID: {}", session_id);
+    // TODO: Create the first chat session and store its id
+    let session_id1 = create_session(&mut sessions, system_prompt)?;
+    // TODO: Send a first message in Session 1 and print the response
+    let reply1_1 = send_query(
+        &client,
+        &mut sessions,
+        session_id1,
+        "Can you explain the concept of derivatives in calculus?",
+    )
+    .await?;
+    println!("Session 1, First Query: {}", reply1_1);
+    // TODO: Send a follow-up message in Session 1 and print the response
+    let reply1_2 = send_query(
+        &client,
+        &mut sessions,
+        session_id1,
+        "Can you give an example of a derivative calculation?",
+    )
+    .await?;
+    println!("Session 1, Follow-up Query: {}", reply1_2);
 
-    // Print initial conversation history
-    if let Some(history) = sessions.get(&session_id) {
-        println!("Initial conversation history:");
+    // TODO: Create the second chat session and store its id
+    let session_id2 = create_session(&mut sessions, system_prompt)?;
+    // TODO: Send a first message in Session 2 and print the response
+    let reply2_1 = send_query(
+        &client,
+        &mut sessions,
+        session_id2,
+        "What is the difference between a molecule and a compound?",
+    )
+    .await?;
+    println!("Session 2, First Query: {}", reply2_1);
+    // TODO: Send a follow-up message in Session 2 and print the response
+    let reply2_2 = send_query(
+        &client,
+        &mut sessions,
+        session_id2,
+        "Can you provide an example of a molecule that is not a compound?",
+    )
+    .await?;
+    println!("Session 2, Follow-up Query: {}", reply2_2);
+    // TODO: Print both conversation histories to confirm they are separate
+    println!("\nSession 1 Conversation History:");
+    if let Some(history) = sessions.get(&session_id1) {
         for message in history {
             match message {
-                ChatCompletionRequestMessage::System(msg) => {
-                    // Convert content to string for printing
-                    let content = match &msg.content {
-                        async_openai::types::ChatCompletionRequestSystemMessageContent::Text(
-                            text,
-                        ) => text,
-                        async_openai::types::ChatCompletionRequestSystemMessageContent::Array(
-                            parts,
-                        ) => {
-                            // Handle array of content parts if needed
-                            &parts.iter()
-                                .filter_map(|part| match part {
-                                    async_openai::types::ChatCompletionRequestSystemMessageContentPart::Text(t) => Some(t.text.as_str()),
-                                    _ => None,
-                                })
-                                .collect::<Vec<_>>()
-                                .join(" ")
-                        }
-                    };
-                    println!("System: {}", content);
+                ChatCompletionRequestMessage::System(msg) => println!("System: {:?}", msg.content),
+                ChatCompletionRequestMessage::User(msg) => println!("User: {:?}", msg.content),
+                ChatCompletionRequestMessage::Assistant(msg) => {
+                    println!("Assistant: {:?}", msg.content)
                 }
-                _ => println!("Unexpected message type"),
+                _ => println!("Other message type"),
+            }
+        }
+    }
+
+    println!("\nSession 2 Conversation History:");
+    if let Some(history) = sessions.get(&session_id2) {
+        for message in history {
+            match message {
+                ChatCompletionRequestMessage::System(msg) => println!("System: {:?}", msg.content),
+                ChatCompletionRequestMessage::User(msg) => println!("User: {:?}", msg.content),
+                ChatCompletionRequestMessage::Assistant(msg) => {
+                    println!("Assistant: {:?}", msg.content)
+                }
+                _ => println!("Other message type"),
             }
         }
     }
