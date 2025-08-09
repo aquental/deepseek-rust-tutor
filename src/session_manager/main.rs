@@ -1,8 +1,11 @@
+use anyhow::Result;
+use async_openai::types::Role;
 use std::fs;
 
 mod session;
 use session::SessionManager;
 
+// Load the tutor system prompt from file, or fall back on a default
 fn load_system_prompt(file_path: &str) -> String {
     fs::read_to_string(file_path).unwrap_or_else(|e| {
         eprintln!("Error loading system prompt: {}", e);
@@ -10,34 +13,47 @@ fn load_system_prompt(file_path: &str) -> String {
     })
 }
 
-fn main() {
+fn main() -> Result<()> {
     // Load the system prompt
     let system_prompt = load_system_prompt("data/system_prompt.txt");
 
-    // TODO: Instantiate the SessionManager
-    let mut session_manager = SessionManager::new();
+    // Initialize manager
+    let mut manager = SessionManager::new();
 
-    // TODO: Define student_id and session_id variables
-    // - Set student_id to a test value, e.g., "test_student"
-    // - Set session_id to a test value, e.g., "test_session"
-    let student_id = "test_student";
+    // Create a new session
+    let student = "test_user";
     let session_id = "test_session";
+    manager.create_session(student, session_id, system_prompt);
 
-    // TODO: Use create_session method to create a new session
-    // - Call the create_session method on the SessionManager instance
-    // - Pass student_id, session_id, and system_prompt as arguments
-    session_manager.create_session(student_id, session_id, system_prompt);
+    // Define a vector of (Role, message) tuples representing a conversation
+    let conversation = vec![
+        (Role::User, "Hello, I need help with geometry."),
+        (
+            Role::Assistant,
+            "Of course! What topic in geometry are you working on?",
+        ),
+        (Role::User, "Can you explain Pythagoras' theorem?"),
+        (
+            Role::Assistant,
+            "Certainly! Pythagoras' theorem states that in a right-angled triangle, the square of the hypotenuse equals the sum of the squares of the other two sides.",
+        ),
+        (Role::User, "Can you give me an example?"),
+        (
+            Role::Assistant,
+            "Sure! If one side is 3 and the other is 4, the hypotenuse is 5 because 3² + 4² = 9 + 16 = 25, and √25 = 5.",
+        ),
+    ];
 
-    // TODO: Use get_session_mut method to check if the session exists
-    // - Retrieve the session using the get_session_mut method with student_id and session_id
-    // - If the session is found, print "Session successfully created!"
-    // - If the session is not found, print "Failed to create session."
-    if session_manager
-        .get_session_mut(student_id, session_id)
-        .is_some()
-    {
-        println!("Session successfully created!");
-    } else {
-        println!("Failed to create session.");
+    // TODO: Use a loop to add each message to the session
+    for (role, content) in conversation {
+        manager.add_message(student, session_id, role, content)?;
     }
+
+    // TODO: Retrieve and print the full conversation
+    let full_conversation = manager.get_conversation(student, session_id)?;
+    for message in full_conversation {
+        println!("{:?}", message);
+    }
+
+    Ok(())
 }
