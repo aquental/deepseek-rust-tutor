@@ -1,11 +1,8 @@
+use crate::session::SessionManager;
+use async_openai::types::Role;
+use async_openai::{Client, config::OpenAIConfig};
 use std::{env, fs};
 use uuid::Uuid;
-use async_openai::{
-    config::OpenAIConfig,
-    Client
-};
-use async_openai::types::Role;
-use crate::session::SessionManager;
 
 #[allow(dead_code)]
 pub struct TutorService {
@@ -25,11 +22,10 @@ impl TutorService {
             .with_api_base(base_url);
         let client = Client::with_config(config);
 
-        let system_prompt = fs::read_to_string("data/system_prompt.txt")
-            .unwrap_or_else(|e| {
-                eprintln!("Error loading system prompt: {}", e);
-                "You are a helpful tutor.".to_string()
-            });
+        let system_prompt = fs::read_to_string("data/system_prompt.txt").unwrap_or_else(|e| {
+            eprintln!("Error loading system prompt: {}", e);
+            "You are a helpful tutor.".to_string()
+        });
 
         Self {
             session_manager: SessionManager::new(),
@@ -46,24 +42,72 @@ impl TutorService {
     }
 
     // Implement the process_query method
-    pub fn process_query(
+    pub async fn process_query(
         &mut self,
         student_id: &str,
         session_id: &str,
         query: &str,
-    ) -> Result<String, String> {
-        // Check if the session exists
+    ) -> Result<String> {
+        // Retrieve the session using SessionManager; return error if not found
         let session = self
             .session_manager
-            .get_session_mut(student_id, session_id)
-            .ok_or_else(|| "Session not found".to_string())?;
+            .get_session(student_id, session_id)
+            .ok_or_else(|| {
+                anyhow!(
+                    "Session not found for student_id: {}, session_id: {}",
+                    student_id,
+                    session_id
+                )
+            })?;
 
-        // Add the query to the session history
+        // Add the student's query to the session history
         self.session_manager
-            .add_message(student_id, session_id, Role::User, query)
-            .map_err(|e| e.to_string())?;
+            .add_message(student_id, session_id, "user", query);
 
-        // Return success message
-        Ok("Query processed".to_string())
+        // Retrieve the full conversation using SessionManager
+        let conversation = self
+            .session_manager
+            .get_conversation(student_id, session_id)
+            .ok_or_else(|| {
+                anyhow!(
+                    "Failed to retrieve conversation for student_id: {}, session_id: {}",
+                    student_id,
+                    session_id
+                )
+            })?;
+
+        // Use the DeepSeek client to generate a response
+        let request = CreateChatCompletionRequestArgs::default()
+            .model("deepseek-ai/DeepSeek-V3")
+            .messages(conversation)
+            .temperature(0.7)
+            .max_tokens(500)
+            .build()?;
+
+        // Make the API call and handle potential errors
+        let response = self
+            .client
+            .chat()
+            .create(request)
+            .await
+            .map_err(|e| anyhow!("DeepSeek API error: {}", e))?;
+
+        // Extract the AI's response from the DeepSeek client response
+        let ai_response = response
+            .choices
+            .first()
+            .ok_or_else(|| anyhow!("No response choices returned from DeepSeek API"))?
+            .message
+            .content
+            .as_ref()
+            .ok_or_else(|| anyhow!("No content in DeepSeek API response"))?
+            .to_string();
+
+        // Add the AI's response to the session history
+        self.session_manager
+            .add_message(student_id, session_id, "assistant", &ai_response);
+
+        // Return the AI's response
+        Ok(ai_response)
     }
 }
