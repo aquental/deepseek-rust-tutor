@@ -20,6 +20,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(routes::root))
         .route("/api/create_session", post(routes::create_session))
+        .route("/api/send_query", post(routes::send_query))
         .layer(Extension(controller));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
