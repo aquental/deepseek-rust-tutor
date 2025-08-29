@@ -2,13 +2,29 @@
 <html lang="en">
 
 <head>
-    <title>Your Personal Tutor</title>
+    <title>Your Personal Tutor Update</title>
 </head>
 
 <body>
     <div class="header">
         <h1>Welcome to Your Personal Tutor</h1>
         <p>Ask any question and receive personalized guidance!</p>
+    </div>
+
+    <div class="suggestions">
+        <button class="suggestion-btn"
+            onclick="messageInput.value = 'Explain the Pythagorean theorem'; sendQuery()">Math Help</button>
+        <button class="suggestion-btn"
+            onclick="messageInput.value = 'Describe Newton\'s laws of motion'; sendQuery()">Science Inquiry</button>
+        <button class="suggestion-btn"
+            onclick="messageInput.value = 'What is the significance of historical events in WWII?'; sendQuery()">History
+            Analysis</button>
+        <button class="suggestion-btn"
+            onclick="messageInput.value = 'Could you explain the concept of [topic]?'; sendQuery()">Explain a
+            Concept</button>
+        <button class="suggestion-btn"
+            onclick="messageInput.value = 'Can you suggest some practice exercises for [subject]?'; sendQuery()">Practice
+            Exercises</button>
     </div>
 
     <div id="chat-container">
@@ -23,53 +39,38 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        // Get references to the messages container and message input field
         const messagesContainer = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
 
-        // Initialize variables to store the current session and student IDs
         let currentSessionId = null;
-        let currentStudentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        let currentStudentId = "student-" + Math.random().toString(36).substring(2, 15);
 
-        // Start a session automatically when the page loads
         document.addEventListener('DOMContentLoaded', startNewSession);
 
-        // Function to create a new session
         function startNewSession() {
-            // Clear the chat history
-            messagesContainer.innerHTML = '';
-
             fetch('/api/create_session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    student_id: currentStudentId
-                })
+                body: JSON.stringify({ student_id: currentStudentId })
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to create new session');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    currentSessionId = data.session_id;
+                    if (data.session_id) {
+                        currentSessionId = data.session_id;
+                        messagesContainer.innerHTML = '';
+                        appendMessage('assistant', data.message || 'New session started.');
+                    } else {
+                        alert('Error creating tutoring session: ' + (data.error?.message || 'Unknown error'));
+                    }
                 })
-                .catch(error => {
-                    console.error('Error creating session:', error);
-                    alert('Failed to start new session. Please try again.');
+                .catch((error) => {
+                    console.error('Error creating tutoring session:', error);
+                    alert('Error creating tutoring session. Check console for details.');
                 });
-        }
-
-        function appendMessage(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-            messageDiv.textContent = content;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         function sendQuery() {
@@ -106,6 +107,15 @@
                     console.error('Error sending query:', error);
                     alert('Error sending query. Check console for details.');
                 });
+        }
+
+        /* global marked */
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = marked.parse(content);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         messageInput.addEventListener('keypress', function (e) {
