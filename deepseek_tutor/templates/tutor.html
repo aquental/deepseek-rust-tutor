@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Your Personal Tutor</title>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Welcome to Your Personal Tutor</h1>
+        <p>Ask any question and receive personalized guidance!</p>
+    </div>
+
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div class="input-container">
+            <div class="input-wrapper">
+                <label for="message-input"></label><input type="text" id="message-input"
+                    placeholder="Type your question...">
+            </div>
+            <button onclick="sendQuery()">Send</button>
+            <button id="new-session-btn" onclick="startNewSession()">New Session</button>
+        </div>
+    </div>
+
+    <script>
+        // Get references to the messages container and message input field
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+
+        // Initialize variables to store the current session and student IDs
+        let currentSessionId = null;
+        let currentStudentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+        // Start a session automatically when the page loads
+        document.addEventListener('DOMContentLoaded', startNewSession);
+
+        // Function to create a new session
+        function startNewSession() {
+            // Clear the chat history
+            messagesContainer.innerHTML = '';
+
+            fetch('/api/create_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    student_id: currentStudentId
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to create new session');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    currentSessionId = data.session_id;
+                })
+                .catch(error => {
+                    console.error('Error creating session:', error);
+                    alert('Failed to start new session. Please try again.');
+                });
+        }
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.textContent = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function sendQuery() {
+            const query = messageInput.value.trim();
+            if (!query) return;
+            if (!currentSessionId) {
+                alert('No active session. Please start a new session.');
+                return;
+            }
+
+            appendMessage('user', query);
+            messageInput.value = '';
+
+            fetch('/api/send_query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    student_id: currentStudentId,
+                    session_id: currentSessionId,
+                    query: query
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        appendMessage('assistant', data.message);
+                    } else {
+                        alert('Error sending query: ' + (data.error?.message || 'Unknown error'));
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error sending query:', error);
+                    alert('Error sending query. Check console for details.');
+                });
+        }
+
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuery();
+            }
+        });
+    </script>
+</body>
+
+</html>
