@@ -24,52 +24,36 @@
     </div>
 
     <script>
-        // Get references to the messages container and message input field
         const messagesContainer = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
 
-        // Initialize variables to store the current session and student IDs
         let currentSessionId = null;
-        let currentStudentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        let currentStudentId = "student-" + Math.random().toString(36).substring(2, 15); // Example student ID
 
-        // Start a session automatically when the page loads
         document.addEventListener('DOMContentLoaded', startNewSession);
 
-        // Function to create a new session
         function startNewSession() {
-            // Clear the chat history
-            messagesContainer.innerHTML = '';
-
             fetch('/api/create_session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    student_id: currentStudentId
-                })
+                body: JSON.stringify({ student_id: currentStudentId })
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to create new session');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    currentSessionId = data.session_id;
+                    if (data.session_id) {
+                        currentSessionId = data.session_id;
+                        messagesContainer.innerHTML = ''; // Clear messages for new session
+                        appendMessage('assistant', data.message || 'New session started.');
+                    } else {
+                        alert('Error creating tutoring session: ' + (data.error?.message || 'Unknown error'));
+                    }
                 })
-                .catch(error => {
-                    console.error('Error creating session:', error);
-                    alert('Failed to start new session. Please try again.');
+                .catch((error) => {
+                    console.error('Error creating tutoring session:', error);
+                    alert('Error creating tutoring session. Check console for details.');
                 });
-        }
-
-        function appendMessage(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-            messageDiv.textContent = content;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         function sendQuery() {
@@ -99,13 +83,21 @@
                     if (data.message) {
                         appendMessage('assistant', data.message);
                     } else {
-                        alert('Error sending query: ' + (data.error?.message || 'Unknown error'));
+                        alert('Error processing query: ' + (data.error?.message || 'Unknown error'));
                     }
                 })
                 .catch((error) => {
                     console.error('Error sending query:', error);
                     alert('Error sending query. Check console for details.');
                 });
+        }
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.textContent = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         messageInput.addEventListener('keypress', function (e) {
