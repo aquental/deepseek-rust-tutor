@@ -3,6 +3,7 @@
 
 <head>
     <title>Your Personal Tutor Update</title>
+    <link rel="stylesheet" href="/static/tutor.css">
 </head>
 
 <body>
@@ -12,19 +13,10 @@
     </div>
 
     <div class="suggestions">
+        <button class="suggestion-btn" onclick="usePrompt('Explain the Pythagorean theorem')">Math Help</button>
+        <button class="suggestion-btn" onclick="usePrompt('Describe Newton\'s laws of motion')">Science Inquiry</button>
         <button class="suggestion-btn"
-            onclick="messageInput.value = 'Explain the Pythagorean theorem'; sendQuery()">Math Help</button>
-        <button class="suggestion-btn"
-            onclick="messageInput.value = 'Describe Newton\'s laws of motion'; sendQuery()">Science Inquiry</button>
-        <button class="suggestion-btn"
-            onclick="messageInput.value = 'What is the significance of historical events in WWII?'; sendQuery()">History
-            Analysis</button>
-        <button class="suggestion-btn"
-            onclick="messageInput.value = 'Could you explain the concept of [topic]?'; sendQuery()">Explain a
-            Concept</button>
-        <button class="suggestion-btn"
-            onclick="messageInput.value = 'Can you suggest some practice exercises for [subject]?'; sendQuery()">Practice
-            Exercises</button>
+            onclick="usePrompt('What is the significance of historical events in WWII?')">History Analysis</button>
     </div>
 
     <div id="chat-container">
@@ -45,11 +37,12 @@
         const messageInput = document.getElementById('message-input');
 
         let currentSessionId = null;
-        let currentStudentId = "student-" + Math.random().toString(36).substring(2, 15);
+        let currentStudentId = "student-" + Math.random().toString(36).substring(2, 15); // Example student ID
 
         document.addEventListener('DOMContentLoaded', startNewSession);
 
         function startNewSession() {
+
             fetch('/api/create_session', {
                 method: 'POST',
                 headers: {
@@ -71,6 +64,7 @@
                     console.error('Error creating tutoring session:', error);
                     alert('Error creating tutoring session. Check console for details.');
                 });
+
         }
 
         function sendQuery() {
@@ -100,13 +94,27 @@
                     if (data.message) {
                         appendMessage('assistant', data.message);
                     } else {
-                        alert('Error processing query: ' + (data.error?.message || 'Unknown error'));
+                        alert('Error sending query: ' + (data.error?.message || 'Unknown error'));
                     }
                 })
                 .catch((error) => {
                     console.error('Error sending query:', error);
                     alert('Error sending query. Check console for details.');
                 });
+        }
+
+        function usePrompt(prompt) {
+            messageInput.value = prompt;
+            // Ensure a session exists before sending a query via prompt
+            if (!currentSessionId) {
+                startNewSession();
+                setTimeout(() => {
+                    if (currentSessionId) sendQuery();
+                    else alert('Please wait for session to start, then try again.');
+                }, 500);
+            } else {
+                sendQuery();
+            }
         }
 
         /* global marked */

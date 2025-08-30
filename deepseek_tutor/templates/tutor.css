@@ -1,0 +1,81 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  text-align: center;
+  padding: 10px;
+}
+
+/* Suggestions styling */
+.suggestions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.suggestion-btn {
+  background: #ff9800;
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+}
+
+/* Style #chat-container as a flex column, centered and responsive with no overflow */
+#chat-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* Style #messages area with border, padding, and scrollable overflow */
+#messages {
+  flex-grow: 1;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+/* Add spacing and padding to individual .message elements */
+.message {
+  margin: 8px 0;
+  padding: 10px;
+}
+
+/* Align .user messages to the right */
+.message.user {
+  text-align: right;
+}
+
+/* Align .assistant messages to the left */
+.message.assistant {
+  text-align: left;
+}
+
+button {
+  padding: 8px 16px;
+  color: #fff;
+  background: #1976d2;
+  border: none;
+  cursor: pointer;
+}
+
+#new-session-btn {
+  background: #2e7d32;
+}
