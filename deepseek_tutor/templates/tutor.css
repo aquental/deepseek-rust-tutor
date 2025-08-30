@@ -16,7 +16,6 @@ body {
   padding: 10px;
 }
 
-/* Suggestions styling */
 .suggestions {
   display: flex;
   justify-content: center;
@@ -24,15 +23,6 @@ body {
   padding: 10px;
 }
 
-.suggestion-btn {
-  background: #ff9800;
-  color: #fff;
-  padding: 8px 16px;
-  border: none;
-  cursor: pointer;
-}
-
-/* Style #chat-container as a flex column, centered and responsive with no overflow */
 #chat-container {
   display: flex;
   flex-direction: column;
@@ -43,39 +33,70 @@ body {
   overflow: hidden;
 }
 
-/* Style #messages area with border, padding, and scrollable overflow */
 #messages {
   flex-grow: 1;
   margin: 10px;
-  padding: 10px;
   border: 1px solid #ccc;
+  padding: 10px;
   overflow-y: auto;
 }
 
-/* Add spacing and padding to individual .message elements */
 .message {
-  margin: 8px 0;
-  padding: 10px;
+  margin: 10px 0;
+  padding: 8px;
 }
 
-/* Align .user messages to the right */
-.message.user {
+.user {
   text-align: right;
 }
 
-/* Align .assistant messages to the left */
-.message.assistant {
+.assistant {
   text-align: left;
 }
 
-button {
-  padding: 8px 16px;
+.suggestion-btn {
+  background: #ff9800;
   color: #fff;
-  background: #1976d2;
+  padding: 8px 16px;
   border: none;
   cursor: pointer;
 }
 
+/* Input container styled as flexbox for horizontal arrangement */
+#input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px;
+}
+
+/* Input wrapper grows to fill available space */
+#input-wrapper {
+  flex-grow: 1;
+}
+
+/* Style message input field with full width, padding, and border */
+#message-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Consistent button styling */
+button,
+.suggestion-btn {
+  padding: 8px 16px;
+  color: #fff;
+  background: #1976d2;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Specific green background for new session button */
 #new-session-btn {
   background: #2e7d32;
 }
