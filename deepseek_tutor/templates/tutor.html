@@ -61,7 +61,7 @@
                 .then(data => {
                     if (data.session_id) {
                         currentSessionId = data.session_id;
-                        messagesContainer.innerHTML = '';
+                        messagesContainer.innerHTML = ''; // Clear messages for new session
                         appendMessage('assistant', data.message || 'New session started.');
                     } else {
                         alert('Error creating tutoring session: ' + (data.error?.message || 'Unknown error'));
@@ -100,7 +100,7 @@
                     if (data.message) {
                         appendMessage('assistant', data.message);
                     } else {
-                        alert('Error sending query: ' + (data.error?.message || 'Unknown error'));
+                        alert('Error processing query: ' + (data.error?.message || 'Unknown error'));
                     }
                 })
                 .catch((error) => {
